@@ -1,0 +1,387 @@
+---
+title: "Chapter4 - Intermediate R"
+author: "Robet Phavong"
+date: "2024-03-03"
+output: html_document
+---
+
+
+# Intermediate R Section Introduction
+
+# Functions nomenclature/formats
+## Example:
+### function_name <- function(arg1, arg2,...) { <function_body> }
+
+## Function Name: Name of function. Stored in R environment as an object under this name
+## Arguments: Placeholder. Optional
+## Function Body: Contains a collection of statements that defines what the functions does
+## Return Value: Last expression in the funciton body to be evaluated '<function_body>'
+
+# Cran: Comprehensive R Archive Network: A Network of ftp and web serves around the world that store identical, up-to-date, versions of code and documenttion for R
+
+# Can use the '?' or help() to see documentation of a function in question
+## Vignettes: long-form documentation, that can use 'browseVignettes()' or 'vignette()' to see how a package can be used with also functions that are used within the package of question
+
+# Factors
+## Used to handle categorical variables(variables that have a fixed and known set of possible values)
+## Data object that is used to categorize data and store it as levels
+## Can store both strings and integers
+## Useful for data that have limited number of unique values, ex 'Male' , 'Female'
+## Useful in data analysis for statistical modeling
+## tidyverse package: provides a suite of tools that solve common problems with factors
+## Common functions: 
+### fct_reorder(): Reordering a factor by another variable
+### fct_infreq(): Reordering a factor by frequency of values
+### fct_relevel(): Changing the order of a factor by hand
+### fct_lump(): Collapse least/most frequent values of factor 
+
+
+# Dates/Times
+## Difficult topic, not just in R but all languages
+## lubridate makes it easier, from tidyverse
+
+# The Apply() Function: Alternative to loops
+## apply()/lapply()/sapply()/mapply()/vapply()
+## better suited for data science than loops
+## lapply() is usually enough
+## {purrr}, a tidyverse alternative
+
+# lapply()
+## Apply a given function to every element of a list
+## obtain a list as a reults
+## Can be used for other objects like dataframes or vectors
+## Returns list of same number of elements as passed in object
+## Use unlist() to convert returned list to vector if needed
+
+# Data import/export
+## Tidyverse
+### {readr}: Read rectangular data (.csv, .tsv, fwf)
+#### read_csv(): reads comma-delimited files
+#### read_write(): writes comma-delimited files
+### {readxl}: Getting data out of Excel and into R
+#### read_xls()/read_xlsx()
+### {httr}: Retrieving webpages
+
+
+# Rational Operators
+```{r}
+v <- c(2, 5.5, 6, 9)
+t <- c(8, 2.5, 14, 9)
+v > t
+v < t 
+v == t
+v >= t # this means greater than or equal to
+v <= t # This mean less than or equal to
+v != t # this means 'does not equal to'
+```
+
+
+# Logical Operator
+```{r}
+# Note: 
+## AND -> & 
+## OR -> |
+## NOT -> !
+
+v1 <- c(TRUE, TRUE, FALSE, FALSE)
+v2 <- c(TRUE, FALSE, TRUE, FALSE) 
+
+v1 & v2 # returns TRUE when both objects are TRUE
+v1 | v2 # returns TRUE when there are at least one TRUE
+!v1 # returns the inverse (opposites)
+!v2
+```
+
+# Conditional Statements
+```{r}
+# if/else statements
+if(TRUE) {
+  print(" Hello, World!")
+}
+
+var <- 10
+
+if(var > 10) {
+  print("Var is greater than 10")
+} else {
+  print("Var is less than or equal to 10")
+}
+
+
+var2 <- "Hi"
+if(var > 10 & var2 == "Hi") {
+  print("That works!")
+} # Note this reutrns nothing because var is not greater than 10 and therefore, not TRUE
+
+# This will work because var is 11 and greater than 10
+var <- 11
+if(var > 10 & var2 == "Hi") {
+  print("That works!")
+}
+
+# Now try using '!=' for var2
+if(var > 10 & var2 != "Hi") {
+  print("That works!")
+}
+
+# Now explore the 'if else ()' function
+if(var > 10) {
+  print("Var is greater than 10")
+} else if (var == 10) {
+  print("Var is equal to 10")
+} else {
+  print("Var is less than or equal to 10")
+}
+```
+
+
+# Working with Loops
+```{r}
+v <- LETTERS[1:4]
+
+# using the for loop, note that the 'i' can be ANY variable and then the varibale/dataset goes after, so the expression below says, for the variable i in the variable v
+for(i in v) {
+  print(i)
+}
+
+
+# similarly, and the better/cleaner way of looping use the lapply() function
+lapply(v, print) # outputs the list as the for loop above
+
+# sapply() function will make the list into a vector
+sapply(v, print)
+```
+
+# Working with Functions (built in R)
+```{r}
+seq(32, 44) # creates sequence from 32-44
+seq(32, 44, by = 2) # increments sequence by 2
+
+mean(25:83)
+sum(1:50)
+
+# Creating your own functions
+func_x <- function() {
+  print("Hello, World!")
+}
+
+func_x()
+## Function 2
+f_square <- function() {
+  (1:10)^2
+}
+f_square()
+
+## function 3
+f_square <- function() {
+  a <- (1:10)^2
+  (a)^2
+}
+f_square()
+
+## function 4
+f_square <- function(a = 10) {
+  (a)^2
+}
+f_square()
+## Above can also exlude the 'a = ' within the fucntion() and it will work the same
+```
+
+
+# Working with Packages
+```{r}
+# Note it is recommeded to install packages in the console, as this only needs to be done once 
+# Then as common practice, you need use to load the package of interest on the ntoebook/Rmd using the library()
+library(ggplot2)
+library(skimr)
+library(corrr)
+
+# Can look up vignettes using 'browseVignettes("name_package")'
+browseVignettes("ggplot2") # This will open on your browser
+```
+
+
+# Working with Factors
+```{r}
+data <- c("East", "West", "East", "North", "North", "East", "West", "West", "East", "North", "West")
+is.factor(data)
+class(data)
+unique(data) # outputs the unique values
+
+# Convert data to factor, giving the vector levels
+data_factor <- factor(data)
+data_factor
+
+levels(data_factor) 
+as.integer(data_factor) # coerced the levels into factors/numerical representation, where East = 1, North = 2, West = 3
+
+# Sort the factor
+sort(data_factor) # sorts the categories into the based levels
+
+# create factor by sorting your data on the levels you wish
+data_factor_new <- factor(data_factor, levels = c("East", "West", "North"))
+
+# Specify your own levels 
+data_factor_complete <- factor(data_factor_new, levels = c("North","East", "South", "West")) # This adjusts and adds levels of choice
+
+table(data_factor_complete)
+
+sort(data_factor_complete)
+
+library(forcats)
+fct_infreq(data_factor_complete) # Orders levels in order of frequency
+```
+
+# Dates and Times
+## {lubridate}
+```{r}
+library(lubridate)
+
+today() # outputs today's date as YYYY-MM-DD
+class(today()) # this is classified as "Date"
+
+now() # outputs "2024-03-03 17:52:21 PST" which is today's date, time, and time zone
+
+# Create date objects from a string
+string <- "2017-01-01"
+date <- ymd(string)
+date
+
+# US dating
+date2 <- mdy("January 31st, 2017") # lubridate can read/interpret this, while R cannot
+date2
+class(date2)
+
+# European dating
+dmy("31-Jan-2017")
+
+# Creating data objects from numbers
+ymd(20170131)
+
+# Creating Date Times
+date_time <- ymd_hms("2017-01-31 20:11:59")
+date_time
+
+mdy_hm("01/31/2017 08:01")
+```
+
+
+# Functional Programming
+```{r}
+# Create vector using rep() function that repeats the number (10, ) ten times (, 10)
+rep(10, 10)
+
+# Use the runif() function that randomly chooses numbers into the lapply()
+values <- lapply(rep(10, 10), runif) # The runif chooses random numbers for each instance/set ten times
+
+# Get the mean of each set of tens from the values dataset created above
+means <- lapply(values, mean)
+class(means)
+
+# unlist to get a vector
+unlist(means)
+
+# nchar() counts the number of letters within a word
+nchar("Hey") # outputs the number 3 for 3 letters in the word 'Hey'
+
+# Look at the data mtcars
+car_names <- rownames(mtcars)
+
+lapply(car_names, nchar)
+
+unlist(lapply(car_names, nchar))
+
+car_names[4]
+
+car_names_lengths <- unlist(lapply(car_names, nchar))
+car_names_lengths[4]
+
+# create fucntion looking at mtcars data
+# This is the data
+mtcars
+# Use which() to search the location for the specific car of interest
+which(rownames(mtcars) == "Hornet Sportabout") # Search for this specific car
+which(colnames(mtcars) == "am") # looking at automatic vs manual
+
+# Create fucntion based on the output of the which() function above
+random_function <- function(name) {
+  if(mtcars[name, 9] == 0)  # if automatic (== 0)
+     mtcars[name, 1] # mgp
+  else # if manual (== 1)
+    mtcars[name, 1]^2 
+}
+
+random_function("Mazda RX4")
+
+# lapply to run the random_function() to run all car models, instead of running one by one
+lapply(rownames(mtcars), random_function)
+
+# Use unlist on function above to create a vecotr of the values from lapply
+unlist(lapply(rownames(mtcars), random_function))
+
+
+## All of the above could have been looped into one function
+unlist(lapply(rownames(mtcars), function(name) {
+  if(mtcars[name, 9] == 0)  # if automatic (== 0)
+     mtcars[name, 1] # mgp
+  else  # if manual (== 1)
+    mtcars[name, 1]^2 
+}))
+```
+
+
+# Data Import/Export
+```{r}
+library(readr)
+
+# Created csv using the Text File on R and called it 'test.csv'
+read_csv("test.csv")
+
+read_csv("test.csv", col_names = FALSE) # The col_names = FALSE lets R know that there are no column names
+
+df <- read_csv("test.csv")
+
+# look at iris to write a csv file from the data
+write_csv(iris, "iris.csv") # indicate the data of interest and then how you wish to title the data output
+
+# you can read an .xlsx file from excel, but you must load the readxl package first
+library(readxl)
+## then you cna use the read_xlsx(" ") function
+
+# To load data from the internet use the htte::GET(" ") function, but you must install and load the httr package
+library(httr)
+```
+
+
+# Working with Databases
+```{r}
+# Working with SQL to look at databases
+library(DBI)
+
+# Connect and create database. Notation of choice: Connect (con) and database (db)
+con <- dbConnect(RSQLite::SQLite(), dbname = ":memory:")
+con
+
+dbListTables(con) # shows 0 because there isnt anything in the data
+
+# Create a table into database using the mtcars. Start by the connection name 'con' and then name the title of file, and then what data you want to input into the database
+dbWriteTable(con, "mtcar", mtcars)
+
+# Know the fields of mtcars
+dbListFields(con, "mtcars")
+
+# Read the inputted dataframe from the database
+dbReadTable(con, "mtcars")
+
+table <- dbReadTable(con, "mtcars")
+
+# Send the query
+res <- dbSendQuery(con, "SELECT * FROM mtcars WHERE cyl = 4") # this doesnt extract the data
+dbFetch(res)
+
+# after you're done using the query, you must clear the results using function
+dbClearResult(res)
+
+# Always disconnect to your connect by using function below
+dbDisconnect(con)
+```
