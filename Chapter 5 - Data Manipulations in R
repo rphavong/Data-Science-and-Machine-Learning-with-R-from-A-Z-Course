@@ -1,0 +1,440 @@
+---
+title: "Chapter 5 - Data Manipulations in R"
+author: "Robet Phavong"
+date: "2024-03-03"
+output: html_document
+---
+
+
+
+# Data Manipulation Section Introduction
+## {tidyverse}: R package collection designed for data science
+## {magrittr}: Offers pipe-operator (%>%) for more readable code
+## {dpylr}: Provides functions for common data manipulation
+## {tidyr}: Help you create tidy (clean) data
+## {stringr}: Provides function for working with strings
+## {rvest}: Helps you scrape information from web pages
+## {jsonlite}: JSON parser and generator (This section I only watched but did not attempt as this does not seem to pertain to my field, yet)
+
+
+
+# Tidy Data (in the sense as clean data)
+## This refers where variables have individual data/rows with only one value/observation 
+# Tidy/Clean Data
+## Describes a standard way of storing data that is used whenever possible in the tidyverse
+### Every column is a variable
+### Every row is an observation
+### Every cell is a single value
+
+
+# The Pipe Operator (%>%)
+## Most important operator for data manipulation in R
+## Provided by the {magrittr} package
+## Included by default in {dplyr} and many tidyverse packages
+## Provides an alternative method for supplying the first argument of a function
+## Not included in R by default, it is within the magrittr package
+```{r}
+library(magrittr)
+
+mean(1:10)
+# is equivalent to using the pipe operator
+1:10 %>%
+  mean()
+
+# Rounds down to the nearest integer
+floor(mean(1:10))
+# equivalent to using pipe operator
+1:10 %>%
+  mean() %>% # finds mean
+  floor() %>% # round down to closest integer
+  print() # prints results
+```
+
+
+# {dplyr}: 
+## Most important package for data manipulation in R
+## Grammar of data manipulation providing a consistent set of verbs to solve most common data manipulation challenges:
+## filter: selecting rows/observations; Pick variables based on their values
+## select: selecting columns/variables; Pick variables based on their names
+## mutate: add/change columns/variables; Add new variables as functions of existing variables
+## arrange: order rows; Change the ordering of the rows
+## summarize: summarizes the dataset; Reduce multiple values to a single summary
+## Helps solve the most common data manipulation challenges
+
+# {dplyr} The Filter Verb
+```{r}
+library(dplyr)
+
+# load starwars dataset from tidyverse package to analyze
+starwars
+
+# Use Pipe to see unique eye-colors in starwars data
+starwars$eye_color %>% unique()
+
+# filter() for selecting rows/observations, for black eye color in starwars data
+starwars %>%
+  filter(eye_color == "black")
+
+# filter() for selecting rows/observations, for non-black eye color and skin color is gold in starwars data 
+starwars %>%
+  filter(eye_color != "black",
+         skin_color == "gold",
+         height > 100)
+```
+
+
+# {dplyr}: The Select Verb
+```{r}
+library(tidyverse)
+# looking at starwars data from tidyverse/dplyr, select for cou,mns 2:7 and assign to data starwars2
+starwars2 <- starwars %>%
+  select(2:7) # outputs the columns/variables 2:7
+
+# remove the 'hair_color' column 4
+starwars %>%
+  select(2:7, -4)
+
+# You can select by using the column names
+starwars %>%
+  select(which(colnames(.) == "height"):which(colnames(.) == "birth_year"))
+
+# Similarly/equivalent to function above
+starwars %>%
+  select(height:birth_year)
+
+# Remove hair_color
+starwars %>%
+  select(height:birth_year, -hair_color)
+
+# Using helper function called everything()
+temp <- starwars %>%
+  select(everything())
+
+# Load waldo to compare data between datasets
+library(waldo)
+
+waldo::compare(starwars, temp) # Note this is the same data cause nothing was changed from the original starwars dataset
+
+waldo::compare(starwars, starwars2) # Note that this one had differences since we removed columns
+
+starwars %>%
+  select(height:birth_year, everything())
+
+# Helper function: start_with(), ends_with(), contains()
+starwars %>%
+  select(hair_color, skin_color, eye_color)
+
+# this is equivalent to using the ends_with(), which makes it more readable/clean
+starwars %>%
+  select(ends_with("_color"))
+
+# Now looking at contains()
+iris %>%
+  select(starts_with("Petal"), Species)
+
+# Now look at where()
+starwars %>%
+  select(where(is.integer)) # Note only that the output is height, because it is the only one that has integer observations
+
+# What if you want to see columns with out width in iris data, use ends_with()
+iris %>%
+  select(!ends_with("Width")) # using the '!' will return all variables/columns without the word "Width" in the iris data 
+```
+
+
+# {dplyr} The Mutate Verb
+```{r}
+# Use the mutate to create a new column/variable. In this example we will calculate the BMI: mass/((height/100)^2)
+starwars %>%
+  mutate(bmi = mass / ((height/100)^2)) %>%
+  select(name, height, mass, bmi) %>%
+  mutate(bmi = round(bmi, 2)) # round bmi values to 2 decimal points
+
+# Example 2
+starwars %>%
+  select(name, mass) %>%
+  mutate(
+    mass2 = mass *2,
+    mass2_squared = mass2 * mass2
+  )
+
+# Example 3
+starwars %>%
+  select(name, homeworld, species) %>%
+  mutate(homeworld = as.factor(homeworld),
+         species = as.factor(species))
+
+# Example 4
+starwars %>%
+  select(name, homeworld, species) %>%
+  mutate(across(c(homeworld, species), as.factor))
+
+# Look at iris data
+iris %>%
+  select(Species, starts_with("Petal")) %>%
+  mutate(Petal.Area = Petal.Length * Petal.Width) %>%
+  filter(Petal.Area > 4 & Petal.Area < 6) %>%
+  select(-Petal.Area)
+           
+```
+
+
+# {dyplr} The Arrange Verb
+```{r}
+# Arrange the heights from tallest to shortest
+starwars %>%
+  arrange(desc(height))
+
+# Arrange the cars in ascending order cylinder 
+mtcars %>%
+  arrange(cyl, disp)
+
+# Order iris data by sepal order
+iris %>%
+  arrange(Sepal.Length, Sepal.Width)
+```
+
+# {dplyr}: The Summarize Verb
+```{r}
+mtcars %>%
+  summarize(mean = mean(disp), n = n()) # n() referes to the number of rows
+
+# Use group_by() to group mtcars data by cyl
+mtcars %>%
+  group_by(cyl) %>%
+  summarize(mean = mean(disp), n = n())
+
+# See the number of unique cars with variable carb
+mtcars %>%
+  group_by(carb) %>%
+  summarize(n = n())
+
+# Furthering to the starwars data group on species, with mean mass and greater than 1 counts and masses greater than 50
+starwars %>% 
+  group_by(species) %>%
+  summarize(
+    count = n(),
+    mass = mean(mass, na.rm = TRUE)
+    ) %>%
+    filter(
+      count > 1,
+      mass > 50
+    ) %>%
+    arrange(desc(count))
+```
+
+
+# Data Pivoting: {tidyr}
+## Augments the data manipulation power of {dplyr}
+## Helps create tidy data
+## pivot_longer: convert data into longer format
+## pivot_wider: convert data into wider format
+
+```{r}
+library(tidyr)
+
+messy_data <- tibble::tribble(
+  ~Student, ~Quiz1, ~Quiz2, ~Test1,
+  #-------/------/-------/------
+  "Peter", "F", NA, NA,
+  "Bob", "B", "C", "B",
+  "John", "A", "A", "B"
+)
+messy_data # Example of wide data
+
+tidy_data <- pivot_longer(messy_data, -Student, names_to = "Assessment", values_to = "Grade")
+
+messy_data2 <- pivot_wider(tidy_data, names_from = Assessment, values_from = Grade)
+
+# Load waldo package to compare the two datasets created using the pivot_longer and pivot_wider
+waldo::compare(messy_data, messy_data2)
+
+## Look at relig_income data, since it is considered 'messy' data, so we will tidy/clean the data
+relig_income
+
+pivot_longer(relig_income, -religion, names_to = "income", values_to = "count")
+
+## Look at billboard data
+billboard %>%
+  select(starts_with("wk"))
+
+billboard_longer <- billboard %>%
+  pivot_longer(
+    cols = starts_with("wk"),
+    names_to = "week",
+    values_to = "rank",
+    values_drop_na = TRUE
+  )
+billboard_longer
+
+# Example as to why having longer data is better for data manipulation
+billboard_longer %>%
+  filter(artist == "2 Pac") %>%
+  View()
+
+billboard_longer %>%
+  group_by(track) %>%
+  summarize(highest_rank = min(rank)) %>%
+  arrange(highest_rank)
+  
+```
+
+
+# {stringr}
+## Also a tidyverse package
+## Provides a cohesive set of functions designed to make working with strings as easy as possible
+## All functions start with str_
+## All functions take a vector of strings as their first argument
+## Most functions work with regular expressions (regexps)
+## {stringr} VERBS (that work with patterns)
+## str_detect(x, pattern): Tells if any match with the pattern
+## str_count(x, pattern): counts the number of patterns
+## str_subset(x, pattern): Extracts the matching components
+## str_locate(x, pattern): gives the position of the match
+## str_extract(x, pattern): extracts the text of the match
+## str_replace(x, pattern, replacement): replaces matches with new text
+## str_split(x, pattern): splits up a string into pieces
+## Other {stringr} VERBS do not require patterns
+## str_to_lower(), str_to_upper(), str_to_title()
+## str_pad()
+## str_trim(), str_squish()
+## str_length
+```{r}
+library(stringr)
+
+# Recall from the data pivoting
+pivot_longer(billboard,
+             starts_with("wk"),
+             names_to = "week",
+             values_to = "rank",
+             values_drop_na = TRUE)
+
+# Now looking how strings apply here
+x <- c("why", "video", "cross", "extra", "deal", "authority") 
+
+str_length("Hello")
+
+str_length(x) # Note that this is calculating the number of letter counts per each character
+
+# str_sub()
+str_sub("Hello", 2, 4)
+
+str_sub(x, 1, 2)
+
+billboard_longer$week %>% str_sub(3,4) %>% as.integer()
+
+billboard_longer %>%
+  mutate(week = str_sub(week, 3, 4),
+         week = as.integer(week))
+
+# str_detect()
+str_detect(x, "a")
+
+str_detect(x, "^a") # start with a
+str_detect(x, "$a") # end with a
+
+# str_extract()
+str_extract(x, "ss")
+str_extract(x, "[:alpha:]*ss")
+
+# str_split
+temp <- str_split("this, is, a, list", ",") %>%
+  unlist()
+
+str_trim(temp)
+```
+
+
+# Web Scraping: {rvest}
+## Helps scrape information from web pages
+## Designed to work with {magrittr}
+## Makes it easy to expressc common webscraping tasks
+## Inspired by libraries like beautiful soup
+## This allows you to extract data from a website
+## Note: Could not figure from a Macbook how to right click to choose the "Inspect" option to view the nodes from the webpage. I am guessing that this might differ on Safari to the tutorial using Chrome, which is the reason that the functions do not work furthering downloading the url as a variable
+
+```{r}
+library(rvest)
+
+# We will web scrape from this website
+## https://www.imdb.com/chart/top/
+## htmls tags (ex: <html>, <body>, <div>)
+## <html> </html>
+## <body> </body>
+
+# attributes
+## <div id="" class="" style></div>
+## <a href="www.google.com">Link</a>
+
+url <- "https://www.imdb.com/chart/top/"
+top_movies <- read_html(url)
+
+titles <- top_movies %>%
+  html_nodes("tbody tr td.titleColumn") %>%
+  html_text()
+
+library(stringr)
+
+titles <- titles %>%
+  str_trim() %>%
+  spr_split("\n")
+
+titles <- lapply(titles, function(movie) {
+  movie[2]
+}) %>%
+  unlist() %>%
+  str_trim()
+
+# Merge all the code above into one function to extract titles from website
+titles <- top_movies %>%
+  html_nodes("tbody tr td.titleColumn") %>%
+  html_text() %>%
+  str_trim() %>%
+  spr_split("\n") %>%
+  lapply(function(movie) {
+  movie[2]
+}) %>%
+  unlist() %>%
+  str_trim()
+
+
+# Merge all the code above into one function to extract years from website
+years <- top_movies %>%
+  html_nodes("tbody tr td.titleColumn") %>%
+  html_text() %>%
+  str_trim() %>%
+  spr_split("\n") %>%
+  lapply(function(movie) {
+  movie[3]
+}) %>%
+  unlist() %>%
+  str_trim() %>%
+  str_replace("\\(", "") %>%
+  str_replace("\\)", "") %>%
+  as.integer()
+
+# Create Ranks
+ranks <- 1:250
+
+# Extract Ratings
+ratings <- top_movies %>%
+  html_nodes(".imdbRating strong") %>%
+  html_text() %>%
+  as.numeric()
+
+# Create dataframe using tibble from extracted data
+top_movies_tibble <- tibble(
+  Rank = rank,
+  Title = titles,
+  Year = years,
+  Rating = ratings
+)
+top_movies_tibble
+```
+
+
+# {jsonlite} package
+## JSON paser/generator optimized for the web
+## Can convert between R objects and JSON without loss of type or information
+## Ideal fro interacting with web APIs
+## Key functions: fromJSON(), toJSON()
