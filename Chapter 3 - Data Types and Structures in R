@@ -1,0 +1,371 @@
+---
+title: "Chapter 3 - Data Types and Structures in R"
+author: "Robet Phavong"
+date: "2024-03-02"
+output: html_document
+---
+
+
+# MY NOTES
+#### Note to self: tidyverse package is collective package to share an underlying design philosophy, grammar and data.
+#### This tutorial will start with tidyverse package
+
+
+# Data types and structures in R Overview
+
+### Character: "a", "hello world"
+### Numeric: 3, 12.7, -1
+### Integer: 3L, 10000L
+### Logical: TRUE, FALSE, T, F
+
+## Atomic Vectors
+### Contain data of one single type
+
+## Missing data (NA)
+### Can be used for all vector types
+### R supports missing data in vectors
+
+# Special Values
+### Inf: Infinity
+### NaN: Not a Number (undeefined value)
+
+# Coercion (also known as casting?)
+### Implicit Coercion: data type is forced into another data type
+### Explicit Coercion: 
+
+# Matrices:
+### Extension of numeric or character vectors
+### Not a separate type of object
+### Simply an atomic vector with dimension (rows and columns)
+### like atomic vectors, must be of the same data type
+### Fill column-wise by default
+### Referenced by specifying index along each dimension in single square brackets
+
+# Lists
+### Acts as a container
+### Unlike atomic vectors, contensts not restricted to a single mode, can encompass any mixture of data types
+### Sometimes referred to as a generic vector
+#### Elements can be of any type of R object
+#### Even lists containing further lists
+#### Makes them fundamentally different from atomic vectors
+### Special type of vector, elements can be of any type of R object
+### Content of elements of a list can be retrieved by using double square brackets
+
+# Dataframes
+### de facto data structure for most tabular data and what we use for statistics
+### special type of lists where every element of the list has the same length
+### Useful data frame helper functions: head(), tail(), summary()
+### Elements can be referenced by specifying the row and the column index in single square brackets (similar to matrices)
+
+# Tibbles: The Simple dataframe
+### A modern re-imagining of the data frame
+### Does less, complains more (forces you to confront problems earlier)
+### Leads to cleaner, more expressice, code
+### Comes with a more enahnced print(), which makes it easier to use large data sets containing complex objects
+### One of the unifying features of the tidyverse
+### Never changes the type of inputs
+### Never changes the names of variables
+### Never creates row names
+### Possible to have column names that are not valid R variables names (non-syntatic)
+
+# Examples of classes 
+```{r}
+class(3)
+class(3L)
+class(FALSE)
+class(T)
+as.integer(12.7)
+```
+
+# Vectors - Part I
+```{r}
+vector(mode = "character", length = 10)
+
+vector("numeric", length = 10) # Note that you do not need to type 'mode =' because that is already in the vector() function
+
+vector("logical", 10) # Note that 'length =' does not need to be typed as this is also in the vector() function
+
+as.integer(FALSE)
+as.integer(TRUE)
+
+numeric(10)
+logical(10)
+integer(10)
+c(1, 2, 3) # function that is short hand to write a vector
+
+length(c(1:3))
+
+x <- c(1:3)
+length(x)
+
+length(5)
+
+str(x)
+```
+
+# Vectors - Part II
+```{r}
+x <- 1:10
+seq(x) # This function allows to add other functions
+## Example
+seq(from = 1 , to = 1000, by = 10)
+
+x + 5
+
+y <- 11:20
+
+x + y
+
+test <- 2:10
+length(test)
+test + y
+
+# Subset, by taking out the first 9 values using single brackets
+y_new <- y[1:9]
+test + y_new
+test + y 
+```
+
+
+# Vectors: Missing Values
+```{r}
+x <- c(0.5, NA, 0.7)
+
+x <- c(TRUE, FALSE, NA) 
+
+x <- c("a", NA, "c", "d", "e")
+
+# This function can tell (test) you when there is a NA value by outputting TRUE
+is.na(x)
+
+# Similarly this function returns if there are any NAs in your vectors
+anyNA(x)
+```
+
+# Vectors: Coercion
+```{r}
+# What if you had a numberic and a character?
+xx <- c("1.7", "a")
+class(xx)
+
+# What 
+xx <- c(TRUE, 2)
+class(xx)
+
+xx <- c("a", TRUE)
+class(xx)
+
+# LEts coerce using 'as._ ' functions
+as.character(1.7)
+xx <- c(as.character(1.7), "a")
+
+as.numeric(TRUE)
+as.numeric(FALSE)
+
+as.logical("a") # This is not possible, will output NA, same for any words used such as using as.logical("Hey), this will outpit 'NA'
+
+as.logical(1)
+
+as.logical(100)
+
+as.logical(0) # Note only this number outputs FALSE!
+
+as.logical(-1) # This outputs TRUE
+
+```
+
+
+# Vectors: Naming
+```{r}
+x <- 1:3
+print(x) # you can exclude the print function and just type the variable 
+
+anyNA(x)
+
+# This function provides the names of the variables if any
+names(x)
+
+LETTERS[1:3] # This outputs capital letters convention
+
+# Assign names to vector values, in this case we are using the first three letters of the alphabet 
+names(x) <- letters[1:3]
+
+x
+```
+
+
+# Vectors: Micellaneous
+```{r}
+x <- 1:3
+x <- c(1, 2, 3) # same results as the above
+# Extend the vector x
+c(x, 4:6)
+
+y <- 4:6
+
+z <- c(x, y)
+
+c(0, z)
+
+# Find the mean of vectors extended
+mean(z)
+sum(z)
+min(z)
+max(z)
+```
+
+# Working with Lists
+```{r}
+# Create a list, which is basically inputting vectors, where each element within the list are vectors
+x <- list(1, "a", TRUE, list(c(1, 2), c("a"), c(TRUE)))
+
+# x <- vector(mode = "list", length = 5)
+
+x[[2]] # This returns a vector
+# vs
+x[2] # this returns a list
+
+class(x[[2]])
+
+# Loop using lapply
+lapply(x, class)
+
+# Corercing a vector into a list
+as.list(1:10)
+
+xlist <- list(a = "John Stevens", b = 1:10, data = head(iris))
+xlist
+
+xlist$a
+xlist$b
+xlist$data 
+# This is equivalent to function above
+xlist[["data"]]
+```
+
+
+# Working with Matrices
+```{r}
+m <- matrix(data = c(1,2,3,11,12,13), nrow = 2, ncol = 3, byrow = TRUE)
+m
+
+m <- matrix(data = c(1,11,2,12,3,13), nrow = 2, ncol = 3, byrow = TRUE)
+m
+
+dim(m)
+
+dim(m) <- c(3,2)
+m
+
+m <- 1:10
+dim(m) <- c(5,2)
+m
+
+x <- 1:3
+y <- 10:12
+
+cbind(x,y) -> m
+m
+dim(m)
+
+rbind(x,y)
+```
+
+
+# Intro to Data Frames
+```{r}
+# Iris is a dataset already within R
+iris # note that there are no row names, but you do see and need column names for dataframes, as these are the vectors with data
+
+?iris # this pull out the 'Help' environment that describes what this data is about
+
+data <- iris # you can assign your data into a variable, in this case called 'data' for viewing within the environment 
+
+data() # This will list all the data sets accessible in R from which you will be able to access and explore and practice with
+```
+
+# Creating Data Frames
+```{r}
+data <- data.frame(Name = c("John", "Bob"), Age = c(35, 40), Hair = c("Brown", "Black"), Married = c(TRUE, FALSE))
+data
+
+data$Age #equivalent to
+data[[2]] # as a vector
+data[2] # as a list
+data[1:3]
+data[c(1, 3)]
+data[2,] # outputs only 2nd row
+data[2, c(2, 4)]
+```
+
+
+# Data Frames: Helper Functions
+```{r}
+# Create a dataframe
+df <- data.frame(id = letters[1:10], x = 1:10, y = 11:20)
+df
+
+# Helper functions, referring to functions that directly manipulate dataframes. Helper functions is just the professor's term, not a legit term
+head(df) # outputs beginning 6 rows of dataset
+tail(df) # outputs last 6 rows of dataset
+
+head(df, n = 3) # can set the number of rows
+tail(df, n =3) 
+
+# short for structure, this function outputs a quick summary of the structure/contents of your dataset
+str(df)
+
+str(iris)
+
+lapply(df, class)
+
+sapply(df, class) # gives the class of each column
+
+summary(df) # summarizes the given data with statistical summaries for each column (variable)
+```
+
+# Data Frames: Tibbles (simple dataframes)
+```{r}
+library(tibble)
+
+# Side-note: tidyverse uses underscore notation, whereas R natively using the dot notation
+
+# Tibble makes printing of dataframe that is useful and would be actually used, such as removing the numbering of rows that are not part of the data
+tb <- as_tibble(iris)
+class(tb)
+tb
+
+tibble(
+  x = 1:5,
+  y= 1, 
+  z= x^2 + y
+  )
+
+# Versus:
+#  data.frame(
+#  x = 1:5,
+#  y= 1:5, 
+#  z= x^2 + y
+#  ) # note that this is not allowed using data.frame, you will have to create each object/variable first. Also, you will have to create the variable names, while tibble you can do so right off the back. Also, tibble you can name your variables anythign you want without any rules; whereas, dataframes has rules
+#Example:
+
+tibble(
+  `:)` = "smile",
+  ` ` = "space",
+  `2000` = "number"
+) # Side note: dataframe would not allow any of these 
+
+# can use this function create dataframe
+tribble(
+  ~x, ~y, ~z, "a", 2, 3.6, "b", 1, 8.5
+)
+
+tb <- tibble(
+  a = lubridate::now() + runif(1e3) * 84600,
+  b = lubridate::today() + runif(1e3) * 30,
+  c = 1:1e3,
+  d = runif(1e3),
+  e = sample(letters, 1e3, replace = TRUE) # chooses random letter or number based on what you want to sample from
+)
+tb
+```
