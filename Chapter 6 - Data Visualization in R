@@ -1,0 +1,228 @@
+---
+title: "Chapter 6 - Data Visualization in R"
+author: "Robet Phavong"
+date: "2024-03-04"
+output: html_document
+---
+
+
+# {ggplot2} OVERVIEW
+## System for declaratively creating graphics
+## Provide the data
+## Tell {ggplots}: 
+### To map variables to aesthetics
+### What graphical primitives to use
+## It takes care of the details
+
+# {ggplot2} USAGE
+## example: ggplot(data = <DAATA>, mapping = aes(<MAPPINGS>)) + <GEOM_FUNCTION>()
+## Start with ggplot()
+## Supply a dataset to the data parameter
+## Supply aesthetic mapping to mapping parameter with aes()
+## Add layers (ex: geom_point() or geom_histogram())
+## Add scales (ex: scale_color_brewer())
+## Specify faceting like facet_wrap()
+## Specify coordinate systems (ex: coord_flip())
+
+
+# Getting Started with Data Visualization in R
+```{r}
+# Load ggplot2 package
+library(ggplot2)
+library(dplyr)
+library(skimr)
+# Load mpg data from ggplot2
+mpg
+
+# Glimpse the data to get a snapshot of the data of interest
+dplyr::glimpse(mpg)
+
+#or
+str(mpg)
+# or to see summary of data of interest
+summary(mpg)
+
+# Similar to summary with more information
+skimr::skim(mpg) 
+
+mpg %>%
+  select(displ, hwy)
+
+# plot the mpg data using ggplot
+ggplot(data = mpg, mapping = aes(x = displ, y = hwy)) + 
+  geom_point() # Need to specify what type of plot you want using geom_
+```
+
+
+# Aesthetics Mappings
+```{r}
+# Find the min and max values for the displ variable in mpg data
+mpg$displ %>% max()
+mpg$displ %>% min()
+mpg$class %>% unique() # List the unique car models within mpg
+
+# plot the mpg data mapping for displ as your x-axis and hwy as your y-axis and distinguish the class of car using different colors
+p <- ggplot(mpg, aes(x = displ , y = hwy, color = class)) +
+  geom_point()
+
+# YOu can assign plot into a figure and then do further manipulations to plot
+## p + 
+
+# Try plotting with sizes aesthetic
+ggplot(mpg, aes(x = displ , y = hwy, size = class)) +
+  geom_point() # But note that this is not a great graph
+
+# try plotting with alpha aesthetic to city
+ggplot(mpg, aes(x = displ , y = hwy, alpha = cty)) +
+  geom_point()
+
+# Try using the shape aesthetic for the different types of car models
+ggplot(mpg, aes(x = displ , y = hwy, shape = model)) +
+  geom_point() # Note that this has a Warning that only does a max of 6 different shapes by default
+
+# Try applying several of the aesthetics 
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy), color = "red", size = 3, alpha = 1/2, shape = 8)
+```
+
+
+# Single Variables Plot
+## Require only one single variable (univariate)
+```{r}
+# Looking into mpg dataset use the histogram that is for continuos variables
+ggplot(mpg) + 
+  geom_histogram(aes(x = displ), bins = 30) # bins default is 30
+
+ggplot(mpg) + 
+  geom_histogram(aes(x = displ), bins = 10)
+
+ggplot(mpg) + 
+  geom_histogram(aes(x = displ), bins = 50)
+
+# Try geom_freqpoly()
+ggplot(mpg) + 
+  geom_freqpoly(aes(x = displ))
+
+ggplot(mpg) + 
+  geom_density(aes(x = displ))
+
+# Try looking at categorical variables in mpg data and plot using geom_bar
+ggplot(mpg) + 
+  geom_bar(aes(x = cyl))
+
+ggplot(mpg) + 
+  geom_bar(aes(x = drv))
+
+ggplot(mpg) + 
+  geom_bar(aes(x = class))
+
+# Order the vector based on frequency 
+library(forcats)
+ggplot(mpg) + 
+  geom_bar(aes(x = forcats::fct_infreq(class), fill = class))
+
+ggplot(mpg) + 
+  geom_bar(aes(x = forcats::fct_infreq(class), fill = drv)) # plots bar plot with stacks to indicate the different drv variable
+
+ggplot(mpg) + 
+  geom_bar(aes(x = forcats::fct_infreq(class), fill = drv), position = "dodge") # dodge breaks the bar stacks into separate bar plots
+```
+
+
+# Two Variables Plot
+```{r}
+# Example for two variable plots
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point()
+
+ggplot(mpg, aes(class, displ)) +
+  geom_boxplot()
+
+ggplot(mpg, aes(class, displ)) +
+  geom_violin()
+
+ggplot(mpg, aes(displ, hwy)) +
+  geom_smooth(se = FALSE) # se = FALSE gets rid of the grey
+
+ggplot(mpg, aes(displ, hwy)) +
+  geom_smooth(se = FALSE, color = "red", linetype = 2, size = 2) # linetype = 2 is to create a dashed line, the size = lets you change the font size of the line
+
+library(dplyr)
+mpg_class_displ <- mpg %>%
+  group_by(class) %>%
+  summarize(mean_displ = mean(displ))
+
+ggplot(mpg_class_displ, aes(class, mean_displ)) + 
+  geom_col()
+
+ggplot(mpg) + 
+  geom_density2d(aes(displ, hwy))
+
+### Search R graph gallery to look at different types of ggplot2!
+```
+
+
+# Facets, Layering, and Coordinate Systems
+```{r}
+# Layer your plots, scatter plot and smooth line plot
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point() +
+  geom_smooth()
+
+# You can add on/layer to assigned plot variable
+p <- ggplot(mpg, aes(displ, hwy)) +
+  geom_point() 
+
+p + geom_density2d() +
+  geom_rug()
+
+# Facets (group by variables)
+ggplot(mpg) +
+  geom_point(mapping = aes(displ, hwy)) +
+  facet_wrap(~class, nrow = 2)
+
+# Coordinate systems
+ggplot(mpg, aes(displ, hwy)) +
+  geom_boxplot(aes(color = class), show.legend = FALSE) +
+  coord_flip() # flips the coordinates of the plot
+```
+
+
+# Styling and Saving
+```{r}
+# Styling
+plot <- ggplot(mpg) +
+  geom_point(aes(displ, hwy))
+plot
+
+plot + 
+  labs(
+    title = "Our plot",
+    subtitle = "Subtitle here",
+    caption = " ...and caption",
+    x = "Engine Size (L)",
+    y = "Fuel Efficiency (on the highway)"
+  )
+
+# Similar to above you can also use xlab and ylab
+plot +
+  xlab("The X Axis") +
+  ylab("The Y Axis") +
+  ggtitle("This is my plot")
+
+plot +
+  xlab("The X Axis") +
+  ylab("The Y Axis") +
+  ggtitle("This is my plot") +
+  theme_minimal() # Can add different types of themes
+
+p <- plot +
+  facet_wrap(~class) +
+  xlab("The X Axis") +
+  ylab("The Y Axis") +
+  ggtitle("This is my plot") +
+  theme_minimal()
+
+# You can then save plot using
+ggsave("plot.jpg", p) # title your plot and in what format, in this case .jpg and the indicate which plot, in this case plot 'p'
+```
