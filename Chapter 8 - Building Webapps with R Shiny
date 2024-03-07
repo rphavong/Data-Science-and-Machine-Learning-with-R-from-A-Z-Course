@@ -1,0 +1,142 @@
+---
+title: "Chapter 8 - Building Webapps with R Shiny"
+author: "Robet Phavong"
+date: "2024-03-05"
+output: html_document
+---
+
+
+# Introduction to R Shiny
+## What is R Shiny?
+## Shiny is an R package that makes it easy to build interactive web apps straight from R
+## A web application framwork for R
+## Makes it very easy to build interative web apps with R
+## Shiny from R Studio website includes the different applications (https://shiny.rstudio.com/)
+
+## TWO COMPONENTS
+## UI: A user-interface definition file
+### Determines the layout of the web app
+### Determines the outputs to be displayed (plots, tables, text, etc)
+### Determines interactive user inputs (sliders, text input, date range pickers, file uploads, etc)
+## Server: A server script file
+### Where all the computaton happens (the "back-end")
+
+## THE UI
+## Outputs: 
+### plotOput(), tableOutput(), uiOutput(), etc
+### _Output(<inputId>, <label>, ...)
+## Inputs:
+### sliderInput(), textInput(), dateInput(), etc
+### _Input(<inputId>, <label>, ...)
+
+## THE SERVER
+## Outputs: renderPlot(), renderTable(), renderUI(), etc
+## output$<id> <- render_()
+## input$<id>
+
+## MUCH MORE THAN A SIMPLE APP...
+## Access to packages for front-end theming ({shinydashboard})
+## File uploading/downloading
+## Authentication and User Management (OAuth, nginx, {shinymanager}, {polished}, etc)
+## Deployment (ShinyApps.oi, AWS, Docker, etc)
+## Email notifications, database integration, etc
+
+
+# Creating a Basic R Shiny App
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# On the 'New File' tab on RStudio, select for 'Shiny Web App..."
+## The default example on the Shiny Web App is usiing the data 'faithful' and creates an interative histogram of the data
+### Great practice is to use RStudio to make R script for editting and then pasting it into the Shiny Web App
+
+# Manipulate the data faithful
+faithful %>%
+  ggplot(aes(waiting)) +
+  geom_histogram(bins = 30)
+
+# Then the above you will input in the above in 'Define server logic' under 'generate bins based on input$bins from ui.R'. Essentially the code above is a simplified version of the default code written when you open the Shiny Web App
+```
+
+
+
+# Other Examples with R Shiny
+```{r}
+# Using Iris dataset to work on R Shiny
+library(skimr)
+
+skimr::skim(iris) # to summarize data for a quick dataset exploration
+
+# Back-end server code
+iris %>%
+  filter(Species == "setosa") %>%
+  ggplot(aes(Petal.Length, Petal.Width)) + 
+  geom_point()
+
+#### Placeholder for RShiny code for iris
+### Recommended to look at function: runExample() to look at the created R Shiny code that you can use
+```
+
+
+### In R Shiny Web App to create interactive plot using iris dataset ###
+
+# This is a Shiny web application. You can run the application by clicking
+# the 'Run App' button above.
+#
+# Find out more about building applications with Shiny here:
+#
+#    http://shiny.rstudio.com/
+#
+
+library(shiny)
+
+# Define UI for application that draws a histogram
+ui <- fluidPage(
+
+    # Application title
+    titlePanel("Iris Dataset Explorer"),
+
+    # Sidebar with a slider input for number of bins 
+    sidebarLayout(
+        sidebarPanel(
+          selectInput("species", "Pick Iris Species", choices = as.character(unique(iris$Species))),
+          selectInput("x", "Picking X Mapping", choices = colnames(select(iris, -Species))[1:2]),
+          selectInput("y", "Picking Y Mapping", choices = colnames(select(iris, -Species))[3:4]),
+
+        ),
+        # Show a plot of the generated distribution
+        mainPanel(
+          plotOutput("iris_plot"),
+          tableOutput("iris_data")
+        )
+    )
+)
+
+# Define server logic required to draw a histogram
+server <- function(input, output) {
+  data <- reactive({
+    iris %>%
+      filter(Species == input$species) %>%
+      select(input$x, input$y)
+  })
+
+  
+    output$iris_plot <- renderPlot({
+    data() %>%
+      setNames(c("X", "Y")) %>%
+      ggplot(aes(X, Y)) + 
+      geom_point() +
+      xlab(input$x) +
+      ylab(input$y) +
+      ggtitle(input$species)
+  })
+  
+  output$iris_data <- renderTable({
+    data()
+  })
+
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
