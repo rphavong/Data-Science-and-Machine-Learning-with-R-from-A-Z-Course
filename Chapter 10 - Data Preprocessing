@@ -1,0 +1,193 @@
+---
+title: "Chapter 10 - Data Preprocessing"
+author: "Robet Phavong"
+date: "2024-03-06"
+output: html_document
+---
+
+
+# Data Preprocessing Introduction
+
+## PACKAGES
+## {recipes}: recipes.tidymodels.org
+## {rsample}: rsample.tidymodels.org
+
+## REAL-WORLD DATA
+## Incomplete
+## Inconsistent
+## Inaccurate (contains errors or outliers)
+## Often lacks specific attribute values/trends
+
+## DATA PREPROCESSING
+## A crucial step
+## Helps enhance the quality of the data
+## Promotes the extraction of meaningful insights from the data
+## Technique of preparing (cleaning and organizing) the raw data
+## Makes it suitable for building and training ML models
+## Helps clean, format, and organize the raw data
+## Makes data ready-to-go for ML models
+
+## TRAIN/TEST SPLIT
+## Very important!
+## Must be done before any preprocessing
+## Common splits: 70%/30%, 80%/20% (Train/Test)
+## Ensure objective measurement for the accuracy of the model
+## Test data can only be used once
+
+## FEATURE ENGINEERING
+## Creating new features from existing features
+## Use domain knowledge
+## Can be used to improve the performance of a model
+
+## COMMON PREPROCESSING STEPS
+## Missing values
+## Vectorization
+## Feature scaling
+## Etc.
+
+## MISSING VALUES
+## Row deletion
+## Back-fill or forward-fill
+## Imputation
+### Mean
+### Median
+### kNN
+
+## VECTORIZATION
+## Encoding categorical data
+## As integers
+## As dummy variables (One-Hot Encoding)
+
+## FEATURE SCALING
+## Normalization: Scaling variable to have values between 0 and 1
+## Standardization: Transforming data to have 0 mean and 1 standard deviation
+## Sometimes used interchangeably (ex: recipes::step_normalize -> Standardization)
+## Transforming features to be on a similar scale
+
+## OTHER
+## Downsampling or upsampling
+### Data imbalanced (way too many or too less of one case)
+### Make number of occurances of each case equal
+## Collapsing rare occurring cases into one case called "Other"
+
+
+# Data Preprocessing
+```{r}
+library(dplyr)
+library(tidyr)
+library(skimr)
+
+
+
+starwars
+skim(starwars)
+
+data <- starwars %>%
+  select(height, mass, gender)
+data
+
+library(rsample)
+
+data_split <- initial_split(data)
+data_train <- training(data_split)
+data_test <- testing(data_split)
+
+# Feature Engineering
+data_train <- data_train %>%
+  mutate(BMI = mass / ((height)^2))
+data_train
+
+# Skim for missing values
+skim(data_train) # Note that there are still missing values 
+# Any () use is.na() function to determine if there are any missing values
+any(is.na(data_train)) # Note that this returns TRUE
+
+# check is there are any NAs in column names
+colSums(is.na(data_train))
+
+# Drop the NA values
+data_tr_imputed <- data_train %>%
+  drop_na(height, gender) %>%
+  mutate(mass = ifelse(is.na(mass), mean(mass, na.rm = TRUE), mass),
+         BMI = ifelse(is.na(BMI), mean(BMI, na.rm = TRUE), BMI))
+
+head(data_tr_imputed)
+```
+
+# Encoding Categorical Data
+```{r}
+# Using iris data
+skim(iris)
+
+# Coerce the species by labeling each species as 1,2,3,etc (however this assumes order for your coerced species)
+iris %>%
+  mutate(Species = as.integer(Species))
+
+# To approach the issue above
+iris %>%
+  mutate(Species_versicolor = ifelse(Species == "versicolor", 1, 0), # Note that this is saying that if the species is versicolor (so true), then it will assign the species 1 and for false 0
+         Species_virginica = ifelse(Species == "virginica", 1, 0)) %>% # same function as the above, but for the species virginica 
+  select(-Species)
+
+# Encode the starwars data, similarly to iris above but looking at genders
+data_tr_imputed_encoded <- data_tr_imputed %>%
+  mutate(gender_masculine = ifelse(gender == "masculine", 1, 0)) %>%
+  select(-gender)
+head(data_tr_imputed_encoded)
+```
+
+# Feature Scaling
+```{r}
+# Use this equation/function for normalization
+normalize <- function(feature) {
+  (feature - mean(feature)) / sd(feature)
+}
+
+data_tr_imputed_encoded_normalized <- data_tr_imputed_encoded %>%
+  mutate_all(normalize)
+```
+
+
+# Complete Preprocessing Pipeline
+```{r}
+## Basically follow all the steps above into one pipeline! 
+
+# Feature Engineering
+data_train_pipeline <- data_train %>%
+  mutate(BMI = mass / ((height)^2)) %>%
+  # Missing Values
+  drop_na(height, gender) %>%
+  mutate(mass = ifelse(is.na(mass), mean(mass, na.rm = TRUE), mass),
+         BMI = ifelse(is.na(BMI), mean(BMI, na.rm = TRUE), BMI)) %>%
+  # Encoding Categorical Data
+  mutate(gender_masculine = ifelse(gender == "masculine", 1, 0)) %>%
+  select(-gender) %>%
+  #Feature Scaling
+  mutate_all(normalize)
+
+# Check if the pipeline is the same as the data train created above using waldo package
+library(waldo)
+waldo::compare(data_train_pipeline, data_tr_imputed_encoded_normalized)
+```
+
+
+# Recipes
+```{r}
+library(recipes)
+library(rsample)
+
+data_recipe <- data_train %>%
+  recipe() %>%
+  step_mutate(BMI = mass / ((height)^2)) %>%
+  step_naomit(height, gender) %>%
+  step_impute_mean(mass, BMI) %>%
+  step_dummy(gender) %>%
+  step_normalize(everything()) %>%
+  prep()
+
+# juice() function will put the above recipe into one dataset
+data_preprocessed <- juice(data_recipe)
+
+library(waldo)
+waldo::compare(data_preprocessed, data_train_pipeline)
+```
