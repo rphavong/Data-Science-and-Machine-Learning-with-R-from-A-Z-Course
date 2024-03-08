@@ -1,0 +1,192 @@
+---
+title: "Chapter 11 - Linear Regression: A Simple Model"
+author: "Robet Phavong"
+date: "2024-03-07"
+output: html_document
+---
+
+
+# Linear Regression: A Simple Model Introduction
+
+## WHAT IS A MODEL?
+## The goal of a model is to provide a simple low-dimensional summary of a dataset
+## There are two parts to a model:
+## 1. Define a family of models that express a precise, but general, pattern that you want to capture
+### Ex: might be a straight line, or a quadratic curve
+### An equation like y = a_1 * x + a_2 or y = a_1 * x ^ a_2
+#### Here, x and y are known variables from the data, and a_1 and a_2 are parameters that can vary to capture different patterns
+
+## 2. Generate a fitted model by finding the model from the family that is the closest to your data
+### Take the generic model family and make it specific
+#### Ex: y = 3*x + 7 or y = 9*x^2
+
+## CAVEAT
+## A fitted model is just the closest model from a family of models 
+### "Best" model only according to some criteria
+### Does not imply that you have a good model
+### Does not imply that the model is "true"
+## The goal of a model is not to uncover truth, but to discover a simple approximation that is still useful 
+
+# OVERFITTING VS UNDERFITTING
+## Over-fitting (high variance)
+## Model is too complex for the underlying pattern of the data
+## Model will fit the training data very well
+## Model will not generalize well
+## Training error will be low but validation/est error will be higher
+## High variance
+
+## Under-fitting (high bias)
+## Model is too simple for the underlying pattern o the data
+## Model will not fit the training data very well
+## Model will not generalize well
+## Training error will be high validation/test error will be both high
+## High bias
+
+## The best model fits both training and validationt/test data well. So, both training error and validation/test error will be low
+
+## QUANTIFY DISTANCE
+## Need a way to quantify the distance betwen the data and a model
+## One option: To find the vertical difference between each point and the model
+### Prediction: y values given by the model
+### Response: Actual y values in the data
+### Distance: Difference between prediction and response
+### Over all distance: Collapse all individual distances into a single number
+#### Commonly used method: Root Mean Squared Deviation 
+
+
+# Linear Regression: A Simple Model
+```{r}
+library(ggplot2)
+library(tibble)
+library(dplyr)
+library(modelr)
+
+sim1 <- modelr::sim1
+
+sim1
+
+# plot to visualize the data for exploratory data analysis
+ggplot(sim1, aes(x, y)) +
+  geom_point()
+
+# Create family of models
+ggplot(sim1, aes(x, y)) +
+  geom_point() +
+  geom_abline(aes(intercept = 20, slope = -2))
+
+models <- tibble(
+  a1 = runif(250, -20, 40),
+  a2 = runif(250, -5, 5)
+)
+
+models
+
+ggplot(sim1, aes(x, y)) +
+  geom_point() +
+  geom_abline(aes(intercept = a1, slope = a2), data = models, alpha = 1/4) # you can input two data sets, in this case 'models'
+
+
+model1 <- function(a, data) {
+  a[1] + data$x * a[2]
+}
+
+model1(c(7, 1.5), sim1)
+
+# Root Mean Squared Deviation
+measure_distance <- function(mod, data) {
+  diff <- data$y - model1(mod,data)
+  sqrt(mean(diff^2))
+}
+measure_distance(c(7, 1.5), sim1)
+
+# Create another function
+sim1_dist <- function(a1, a2) {
+  measure_distance(c(a1, a2), sim1)
+}
+
+sim1_dist(7, 1.5)
+
+
+models <- models %>%
+  mutate(dist = purrr::map2_dbl(a1, a2, sim1_dist)) 
+models
+
+ggplot(sim1, aes(x, y)) +
+  geom_point(size = 2, color = "grey30") +
+  geom_abline(
+    aes(intercept = a1, slope = a2, color = -dist),
+    data = filter(models, rank(dist) <= 10)
+  )
+
+ggplot(models, aes(a1, a2,)) + 
+  geom_point(data = filter(models, rank(dist) <= 10), size = 4, color = "red") +
+  geom_point(aes(color = -dist)) # the red circled represent the top 10 models
+
+
+grid <- expand.grid(
+  a1 = seq(-5, 20, length = 25),
+  a2 = seq(1, 3, length = 25)
+) %>%
+  mutate(dist = purrr::map2_dbl(a1, a2, sim1_dist))
+grid
+
+grid %>%
+  ggplot(aes(a1, a2)) +
+  geom_point(data = filter(grid, rank(dist) <= 10), size = 4, color = "red") +
+  geom_point(aes(color = -dist)) 
+
+# shows a more zoomed narrowed line
+ggplot(sim1, aes(x, y)) +
+  geom_point(size = 2, color = "grey30") +
+  geom_abline(
+    aes(intercept = a1, slope = a2, color = -dist),
+    data = filter(grid, rank(dist) <= 10)
+  )
+
+# find the best model
+best <- optim(c(0, 0), measure_distance, data = sim1)
+best$par # note that this is very close to our most accurate values in the grid data
+
+ggplot(sim1, aes(x, y)) + 
+  geom_point(size = 2, color = "grey30") +
+  geom_abline(intercept = best$par[1], slope = best$par[2])
+
+
+### All of the above can be done with one function in R, the lm() function
+sim1_mod <- lm(y ~ x, data = sim1)
+
+coef(sim1_mod) # this will print out the intercept and slope
+
+broom::tidy(sim1_mod) # this will give you a tidy way to show the intercept and x of the data with estimate, std.error, statistic, and p.values 
+
+
+# Prediction: How to predict the new data
+## Steps
+### Train/Test Split
+### Model Fitting
+### Prediction
+
+library(rsample)
+
+# Train/Test Split
+data_split <- initial_split(sim1)
+data_train <- training(data_split)
+data_test <- testing(data_split)
+
+# Model Fitting
+model <- lm(y ~ x, data = data_train)
+
+# Prediction
+prediction <- predict(model, data_test)
+data_test <- data_test %>%
+  mutate(pred = prediction)
+
+ggplot(data_test) + 
+  geom_line(aes(x, pred), size = 3, color = "red", alpha = 0.5) +
+  geom_point(aes(x, y), size = 5, color = "green", alpha = 3/4) +
+  geom_point(data = sim1, aes(x, y), alpha = 0.5)
+
+# Measure the accuracy
+library(yardstick)
+yardstick::metrics(data_test, y, pred)
+```
