@@ -1,0 +1,183 @@
+---
+title: "Chapter 13 - Linear Regression (Real Model)"
+author: "Robet Phavong"
+date: "2024-03-09"
+output: html_document
+---
+
+
+# Linear Regression - Real Model Section Introduction
+
+## LINEAR REGRESSION (LR)
+## A simple yet useful supervised learning approach for predictiing  quantitative (numeric) response
+## Makes prediction by simply computing a weighted sum of the input features, plus a constant called the bias term (also called the intercept term)
+
+## FINDING PARAMETERS
+## Choose parameters in a way so that prediction is close to actual values for the training samples
+## Define a cost (error) function and find the parameters that minimize the cost functions
+### Mean Square Error (MSE): Most common cost function for LR (average of squares of prediction errors)
+## Some methods: Least Squares Method (normal equation), Gradient Descent
+
+## LINEAR REGRESSION: MAIN STEPS
+## 1. Use Least-squares to fit a line to the data
+## 2. Calculate R"2
+## 3. Calculate a p-value for R^2
+
+## TERMINOLOGY
+## Residual: The distance from a line to a data point
+## Root Mean Squared Error (RMSE): Measure of how for from the regression line data points are
+## R^2: A goodness-of-fit measure for linear regression models
+### Indicates the percentage of variance in the dependent variable that the independent variables explain collectively
+### Measures the strngth of the relationship between your model and the dependent variable (scale of 0-100%)
+
+## Null Hypothesis: An initial statement claining that there is no relationship between two measured events
+## P-value: Tests the null hypothesis
+### Low p-value (<0.05): Null hypothesis can be rejected 
+### Predictor likely a meaningful addition to your model
+### Changes in predictor's value are related to changes in the response variable
+### Large (insignificant) p-value: Suggests that predictor not associated with changes in response
+
+## PERFORMANCE MEASURES VS COST FUNCTION
+## Can be different in many cases
+### Cost function is used to estimate model parameters by using training data
+### Performance measure is used to evaluate the model quality during cross-validaiton and with test data
+
+## TIDYMODELS STEPS
+## Split data ({rsample})
+## Prepare recipe ({recipes})
+## Specify model ({parsnip})
+## Tune hyperparameters ({tune})
+## Fit model ({parsnip})
+## Analyze model ({broom})
+## Predict({parsnip})
+## Interpret results ({yardstick})
+
+
+# Linear Regression in R - Real Model
+```{r}
+library(ggplot2)
+library(dplyr)
+library(corrr)
+library(rsample)
+library(recipes)
+library(parsnip)
+library(skimr)
+
+# Looking at diamonds data, it's good practice to skim through your data to become familiar with the data
+skimr::skim(diamonds)
+
+diamonds %>%
+  select(where(~ !is.factor(.x))) %>% # this selecting all columns that are NOT factors, note from the skim function the summary says that there are 3 variables that are factors and 7 that are numeric
+  corrr::correlate() %>% # Look at the correlation of the variables within the data
+  corrr::fashion() # Also looks into correlation, but it cleans up the correlation values to two decimal points
+
+# Can also look at network_plot() instead of fashion() from corrr package
+diamonds %>%
+  select(where(~ !is.factor(.x))) %>%
+  corrr::correlate() %>% 
+  corrr::network_plot() # This will plot your correlations, note from the plot, carat, price, x, y, and z have the closest correlations. Depth and table are shown to not be as correlated 
+
+# Let's predict the price based on aspects of the diamonds
+high_corr_variables <- diamonds %>%
+  select(where(~ !is.factor(.x))) %>%
+  correlate() %>%
+  corrr::focus(price) %>% # This allows to view the variables and how they are correlated to price, where the carat variable seems to be the highest correlated variable to price
+  arrange(desc(price)) %>% # arrange from highest to lowest correlation
+  filter(price > 0.5) %>% # filter for correlation is higher than 50%
+  pull(term) # outputs which variables are true, where the correlation is > 0.5, which are carat, x, y, and z
+
+high_corr_variables  
+
+# Table to view the correlation values that were > 0.5 created into the data named high_corr_variables along with the price value
+data <- diamonds %>%
+  select(high_corr_variables, price)
+data
+```
+
+# Prepare data split
+```{r}
+data_split <- initial_split(data, strata = price)
+data_train <- training(data_split)
+data_test <- testing(data_split)
+```
+
+# Modeling
+```{r}
+model <- lm(price ~ ., data = data_train)
+
+# View summary of your trained dataset model
+summary(model)
+# Note that R^2 are 0.8514, so good sign that your model is good, also note the p-value is 2.2e-16, which is < 0.05, where we would reject the null hypothesis that there is no relationship between the correlated variables and price of diamonds! So there is a correlation!
+```
+
+# Broom
+```{r}
+# Broom creates a table of the statistical summary similar to the summary() function, but this table you can extract and use for other purposes
+broom::tidy(model)
+```
+
+
+# Tidymodels Approach
+```{r}
+# Starting from the diamonds data
+data <- diamonds
+
+# Prepare data split
+data_split <- initial_split(data, strata = price)
+data_train <- training(data_split)
+data_test <- testing(data_split)
+
+# Data Preprocessing
+# normalize and vecotrize data
+data_rec <- data_train %>%
+  recipe(price ~ ., data_train) %>%
+  step_dummy(all_nominal()) %>%
+  step_normalize(all_numeric(), -all_outcomes()) %>%
+  prep()
+
+juiced <- juice(data_rec)
+
+# Specify the model, in this case linear regression using lm() (fitting linear models) using parsnip
+lm_model <- parsnip::linear_reg() %>%
+  set_engine("lm") %>%
+  set_mode("regression")
+
+# Fit model
+lm_fit <- fit(lm_model, price ~ ., juiced)
+lm_fit
+
+# glance at the fit model for statistical summary
+glance(lm_fit)
+
+# Similarly to glimpse a more in depth is tidy(), which also allows to view a statistical summary of your fitted model
+tidy(lm_fit)
+
+# From the trained/fit model, we can now predict values, in this case pricing of the diamonds from the processed dataset
+results_train <- lm_fit %>% # trained model
+  predict(new_data = juiced) %>% # processed dataset
+  mutate(truth = data_train$price) # predict the price with the actual price from the pre-trained data
+
+# Now do the same, but for the preprocessed dataset
+results_test <- lm_fit %>% # trained model
+  predict(new_data = bake(data_rec, data_test)) %>% # the preprocessing dataset
+  mutate(truth = data_test$price)
+
+# Not integrate the two results of prediction datasets into a new dataset
+results <- results_train %>%
+  mutate(type = "train") %>%
+  bind_rows(
+    results_test %>%
+      mutate(type = "test")
+  )
+
+# Compare results between the train and test to see how accurate the model could predict the price of diamond
+results %>%
+  group_by(type) %>% # note train vs test
+  yardstick::rmse(truth, .pred) # Note that the estimates are very close between test and train!
+
+# Plot the results comparison
+ggplot(results, aes(truth, .pred)) +
+  geom_point() +
+  geom_abline(color = "red", size = 2) +
+  coord_fixed()
+```
