@@ -1,0 +1,235 @@
+---
+title: "Chapter 12 - Exploratory Data Analysis"
+author: "Robet Phavong"
+date: "2024-03-08"
+output: html_document
+---
+
+
+# Exploratory Data Analysis Introduction
+
+## EXPLORATORY DATA ANALYSIS (EDA)
+## Develop an understanding of your data
+## Ask questions
+## Fundamentally a creative process
+
+## Definitions
+## Variable" A quantity, quality, or propert that you can measure
+## Value: State of a variable when you measure it
+## Observation: A set of measurements, several values each associated with a different variable
+
+## Tabular data: A set of values, each associated with a variable and an observation. Tabular data is tify if:
+### Each value is placed in its own "cell"
+### Each variable in its own column
+### Each observation in its own row
+
+## Variation
+## Tendency of the values of a variable to change from measurement to measurement
+## Each measurement will include a small amout of error that varies from measurement to measurement
+## Every variable has its own pattern or variation, which can reveal interesting information
+## Best way to understand that pattern is to visualize the distribution of the variable's values
+
+## TWO OF VARIABLES
+## Categorical: If it can only take one of a smnall set of values (factors or character vectos)
+## Continuous: If it can take any of an infinite set of ordered values (numbers and datetimes)
+
+## OTHER VALUES
+## Unusual values: outliers are observations that are unusual (data points that don't seem to fit the pattern)
+## Missing values: two options
+### Drop entire row with the strange values
+### Replace unusual values with missing values
+
+## COVARIATION
+## Variation: Descries the behaviour within a variable
+## Covariation: tendency for the values of two or more variables to var together in a related way
+### Best way to spot covariation is to visualize the relationship between two or more variables
+## How depends on the type of variables involved
+### Categorical vs Continuous (frequency/density/boxplot)
+### Categorical vs Categorical
+### Continuous vs Continuous (scatterplot)
+
+## BOXPLOT
+## An alternative to display the distribution of a continuous variable broken down by a categorical variable
+## A type of visual shorthand for a distribution of values (popular among statisticians)
+## Consists:
+### A box that stretches from the 25th percentile of the distribution to the 75th percentile (interquartile range or IQR)
+#### In the middle of the box is a line that displays the median (50th percentile) of the distribution
+#### Gives you a sense of the spread of the distribution (symmetric about the median or skewed to one side)
+### Visual point that display observations that fall more than 1.5 time the IQR from either edge of the box (plotted individually because unusual)
+### A line (whisker) that extends from each end of the box and goes to the farthest non-outlier point in the distribution
+
+
+# Hands-on Exploratory Data Analysis
+```{r}
+library(ggplot2)
+library(tibble)
+library(dplyr)
+
+# will be looking at the diamonds dataset
+## Always recommended to look up what the variables/columns mean about the dataset
+?diamonds
+
+glimpse(diamonds)
+
+summary(diamonds)
+
+str(diamonds)
+
+dim(diamonds)
+
+library(skimr)
+skimr::skim(diamonds)
+
+head(diamonds)
+tail(diamonds)
+```
+
+# Visualize distributions
+```{r}
+# Categorical variables
+ggplot(diamonds) +
+  geom_bar(mapping = aes(x = cut))
+
+# obtain the counts of the variable cut
+diamonds %>%
+  count(cut)
+
+# can also table cut for the counts
+table(diamonds$cut)
+
+unique(diamonds$cut) # recall this shows the unique categories within the cut variable
+
+levels(diamonds$clarity) 
+
+# Can compare cut vs clarity (categorical vs categorical)
+table(diamonds$cut, diamonds$clarity)
+
+## similarly we can do the same with pipe operator, but this will put in table, much neater!
+diamonds %>%
+  count(cut, clarity) %>%
+  arrange(desc(n))
+
+# plot the cut and clarity of the diamonds
+ggplot(diamonds, aes(cut, fill = clarity)) +
+  geom_bar(position = "dodge") + # This will unstack the barplots so you will get separate barplots
+  theme(axis.text.x = element_text(angle = 90))
+
+# You can also plot the same plot above but flipped
+ggplot(diamonds, aes(cut, fill = clarity)) +
+  geom_bar(position = "dodge") + 
+  coord_flip()
+
+# You can fill the dodging and fill them
+ggplot(diamonds, aes(cut, fill = clarity)) +
+  geom_bar(position = "fill") + 
+  ylab("Proportion")
+
+# You can also obtain the percentages based on the entire data set
+round(prop.table(table(diamonds$cut, diamonds$clarity))*100,2)
+
+ggplot(diamonds, aes(cut)) +
+  geom_bar() +
+  facet_wrap(~ clarity)
+```
+
+# Continuous varibles
+```{r}
+# Plot a continuous variable from diamonds dataset, in this case carat 
+ggplot(diamonds) +
+  geom_histogram(mapping = aes(carat), binwidth = 0.5)
+
+# Explore the cut_width of diamond
+diamonds %>%
+  count(cut_width(carat, 0.5))
+
+# filter for carats with cut less than 3
+smaller <- diamonds %>%
+  filter(carat < 3)
+
+ggplot(smaller, mapping = aes(x = carat)) + 
+  geom_histogram(binwidth = 0.1)
+
+# Plot 
+ggplot(smaller, mapping = aes(carat, color = cut)) +
+  geom_freqpoly(binwidth = 0.1)
+
+# visualize potential Outliers
+ggplot(smaller, mapping = aes(carat)) + 
+  geom_histogram(binwidth = 0.01)
+
+ggplot(diamonds) +
+  geom_histogram(mapping = aes(x = y), binwidth = 0.5) +
+  coord_cartesian(ylim = c(0, 50)) # note the outliers observed in about 32 and 58 in y, and even at 0
+
+# Decide what to do for the outlier values
+diamonds %>%
+  filter(y < 3 | y >20) %>% # Looking from the plot made above, you can see that outliers fall under aboout 3 and above 20
+  select(price, x, y, z) %>%
+  arrange(y)
+
+# Missing values
+diamonds2 <- diamonds %>%
+  filter(between(y, 3, 20))
+# Plot within the range of the plot without the outliers creating a plot that looks very skewed
+ggplot(diamonds2) +
+  geom_histogram(mapping = aes(x = y), binwidth = 0.5)
+
+# Plot without the outliers noted and the NA's (missing values)
+diamonds %>%
+  mutate(y = ifelse(y < 3 | y > 20, NA, y)) %>%
+  ggplot(aes(x = x, y = y)) +
+  geom_point() # Note that the warning says "Removed 9 rows containing missing values"
+
+# Now compare the plot above with the plot without removing the missing values and outliers
+diamonds %>%
+  ggplot(aes(x = x, y = y)) +
+  geom_point() # Note the difference between the two plots!
+```
+
+
+# Covariation
+## Categorical vs Continuous variables
+```{r}
+## Plots to compare the categorical vs. continuous variables
+
+# Frequency plot
+ggplot(diamonds, aes(x = price)) + 
+  geom_freqpoly(aes(color = cut), binwidth = 500)
+
+# Bar plot
+ggplot(diamonds) + 
+  geom_bar(aes(x = cut))
+
+# Density plot
+ggplot(diamonds, aes(x= price, y = after_stat(density))) +
+  geom_freqpoly(aes(color = cut), binwidth = 500)
+
+# Boxplot
+ggplot(diamonds, aes(x = cut, y = price)) +
+  geom_boxplot()
+```
+
+
+# Categorical vs Categorical
+```{r}
+ggplot(diamonds) +
+  geom_count(aes(x = cut, y = color))
+
+diamonds %>%
+  count(color, cut) %>%
+  ggplot(aes(x = color, y = cut)) +
+  geom_tile(aes(fill = n))
+```
+
+# Continuous vs Continuous
+```{r}
+ggplot(diamonds) +
+  geom_point(aes(x = carat, y = price))
+
+ggplot(diamonds) +
+  geom_point(aes(x = carat, y = price), alpha = 1/100)
+
+# look at the smaller data
+ggplot(data = smaller) +
+  geom_bin2d(aes(x = carat, y = price))
+```
