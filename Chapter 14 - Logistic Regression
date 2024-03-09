@@ -1,0 +1,157 @@
+---
+title: "Chapter 14 - Logistic Regression"
+author: "Robet Phavong"
+date: "2024-03-09"
+output: html_document
+---
+
+
+# Introduction to Logistic Regression
+
+## CLASSIFICATION
+## Predict a class for a given instance based on set of features
+### Ex: Whether or not an new email is spam
+### Ex: Whether a handwritten digit is 0,1,2,..., or 9
+## Binary Classification: Classify an instance into one of two possible classes (email spam or not-spam)
+
+## Multiclass Classification: Classify an instance into one or more than two possible classes
+### Ex: a digit is 0,1,...,or 9
+## Multilabel (binary labels) Classificiation
+## Multioutput (multiclass labels) Classification
+
+## ACCURACY
+## Accuracy = Number of correct predictions/ Total number of predictions
+## Metric commonly used for evaluating (measuring performance) of classification models
+## Measure percentages of cases that are correctly classified
+## Evaluating a classifier is trickier than evaluating a regressor
+## Can be a misleading metric and does not alone tell the full story
+
+## ACCURACY: Not Enough!
+## Ex: Building a classifier to predict whether a patient has a rare, fatal disease like cancer
+### Assume 0.1% of population affected by disease
+### Positive class: Patient has disease
+### Negative class: Patient does not have disease
+## Binary classification
+
+## If model always predicts that the patient does not have the disease (negative) regardless of test results, it will be right 99.9% of the time!
+### Classification accuracy is 99.9%
+### Eben though accuracy is extremely high, model is useless
+### We need other metrics to evaluate the performance of classifiers
+
+## CONFUSION MATRIX
+## A table where: 
+### Rows represent actual classes
+### Columns represent predicted classes
+### Each entry is the number of instances with the corresponding actual and predicted classes
+## Note: True Positive (TP), False Positive (FP), True Negative (TN), False Negative (FN)
+## Accuracy: (TP + TN)/(FP + FN + TP + TN)
+### How often is the classifier correct?
+## Precision: TP/(TP + FP)
+### When predicted positive, how often is the classifier correct?
+## Recall: TP/(TP + FN)
+### How often are the positive instances classified correctly as positive?
+
+## F1 SCORE
+## Formula: 2 * ((precision * recall)/(precision + recall))
+## Combines precision and recall into a single metric
+## Interpreted as a weighted average of precision and recall
+## Is a value between 0 (worst) and 1 (best)
+## High only if both recall and precision are high
+## Favors classifers that have a similar precision and recall
+
+## PRECISION VS RECALL
+## The F1 score favors classifiers that have similar precision and recall, but this is not always what you want
+### Sometimes precision is more imporatant
+### Sometimes recall is more important
+## Precision: 0.5, Recall: 0.5 -> F1 Score: 0.5
+## Precision: 1.0, Recall: 0.2 -> F1 Score: 0.5
+
+
+# Logistic Regression in R
+```{r}
+library(tidyr)
+library(dplyr)
+library(corrr)
+library(rsample)
+library(recipes)
+library(parsnip)
+library(yardstick)
+library(titanic)
+
+# Looking at titanic dataset
+# Split data for taining and testing, note that this data already has these set!
+data <- titanic::titanic_train
+data_split <- initial_split(data)
+train <- training(data_split)
+test <- testing(data_split)
+
+skimr::skim(train)
+```
+
+# Data Preprocessing
+```{r}
+# Create recipe
+data_rec <- recipe(Survived ~., train) %>%
+  step_mutate(Survived = ifelse(Survived == 0, "Died", "Survived")) %>% # vectorize the Survival variable with 0 will be for Survived people and 1 for those the Died in the titanic event
+  step_string2factor(Survived) %>% # Create Survived variable into a factor
+  step_rm(PassengerId, Name, Ticket, Cabin) %>% # Remove the variables that are NOT of interest from data
+  step_impute_mean(Age) %>% # imputate the mean to obtain values to the missing Age variable 
+  step_dummy(all_nominal(), -all_outcomes()) %>% # vectorize the remaining columns of interest, this will vectorize all the categorical variables of interest. The -all_outomes exclude the Survived, since we manually vectorized already
+  step_zv(all_predictors()) %>% # creates a specification of a recipe step that will remove variables that contain only a single value
+  step_center(all_predictors(), -all_nominal()) %>% # will centerize to 0
+  step_scale(all_predictors(), -all_nominal())
+
+# Data prep
+data_prep <- data_rec %>%
+  prep()
+```
+
+
+# We can all previous steps for modeling and ____ all in one step!
+```{r}
+fitted_model <- logistic_reg() %>%
+  set_engine("glm") %>% # classification model
+  set_mode("classification") %>%
+  fit(Survived ~., data = bake(data_prep, train)) # Recall: that the juiced and baked train data set are the same!
+  
+predictions <- fitted_model %>%
+  predict(new_data = bake(data_prep, test)) %>%
+  bind_cols(
+    bake(data_prep, test) %>%
+      select(Survived)
+  )
+
+# Create confusion matrix
+predictions %>%
+  conf_mat(Survived, .pred_class) # note that the Truth is Survived and .pred_class is the predictions
+
+# Generate a metric
+predictions %>%
+  metrics(Survived, .pred_class) %>% # This generates the metric (accuracy and kap), estimator (binary), and estimates, which can be used for further processes
+  select(-.estimator) %>%
+  filter(.metric == "accuracy") # note that this shows a 0.789 estimate, which can improved by going back to preprocessing steps and tweaking the of re-introducing or removing more variables into the data
+```
+
+# Calculate the precision and recalls
+```{r}
+# Precision
+predictions %>%
+  precision(Survived, .pred_class)
+
+# Recall
+predictions %>%
+  recall(Survived, .pred_class)
+
+# Can put these values into one table (binding)
+predictions %>%
+  precision(Survived, .pred_class) %>%
+  bind_rows(
+    predictions %>%
+    recall(Survived, .pred_class)
+  ) %>%
+  select(-.estimator) %>%
+  mutate(.estimat = round(.estimate*100, 2))
+  
+# Calculate F-score
+predictions %>%
+  f_meas(Survived, .pred_class) # f-score is 0.812 which is fairly accurate, which indicates a good model!
